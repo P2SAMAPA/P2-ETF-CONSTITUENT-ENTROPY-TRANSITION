@@ -78,7 +78,10 @@ ROTATION_Z_TURNOVER = 0.5
 # baseline the structure must beat), FULL = COMBO + entropy/sync/dispersion/
 # transition/divergence/rotation.
 # ---------------------------------------------------------------------------
-REFIT_DAYS = 21
+REFIT_DAYS = 42            # refit cost matters: ~30 ETFs x thousands of days x 3 families must fit in an Actions run
+MAX_HISTORY_DAYS = 2200    # the pipeline uses the most recent ~8.7 years
+GAM_MAX_ROWS = 40000       # GAM trains on the most recent rows only (it is the slow family)
+GAM_REFIT_MULT = 2         # and is refit half as often
 MIN_TRAIN_DAYS = 250
 MIN_TRAIN_ROWS = 2000
 RIDGE_ALPHAS = [1.0, 10.0, 100.0, 1000.0, 10000.0]

@@ -47,6 +47,8 @@ class GamModel:
 
     def fit(self, X, y):
         from pygam import LinearGAM, s
+        if len(X) > config.GAM_MAX_ROWS:               # rows arrive ordered by date: keep the most recent
+            X, y = X[-config.GAM_MAX_ROWS:], y[-config.GAM_MAX_ROWS:]
         Xs = X[:, self.cols]
         terms = s(0, n_splines=config.GAM_SPLINES)
         for i in range(1, len(self.cols)):

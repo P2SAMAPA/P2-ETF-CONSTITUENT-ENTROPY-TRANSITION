@@ -47,16 +47,26 @@ def pit_weights(asof: np.ndarray, S: np.ndarray, dates: pd.DatetimeIndex):
     return W, pit
 
 
-def backfill_weights(W: np.ndarray, pit: np.ndarray, Rm: np.ndarray, etf_ret: np.ndarray) -> np.ndarray:
-    """Roll the first PIT row's weights backward through the days that have no snapshot."""
+def backfill_weights(W: np.ndarray, pit: np.ndarray, Rm: np.ndarray, etf_ret: np.ndarray, S0: Optional[np.ndarray] = None) -> np.ndarray:
+    """
+    Roll the first snapshot's weights backward through the days that have no snapshot. A snapshot taken after the close
+    of day D is the start-of-day weights of day D+1, so it can seed the roll even when D+1 does not exist yet (the
+    day-one case: a single snapshot taken today). `S0` is that first snapshot's weight vector.
+    """
     W = W.copy()
-    if not pit.any() or pit.all():
+    n = W.shape[0]
+    if pit.all():
         return W
-    i0 = int(np.argmax(pit))
+    i0 = int(np.argmax(pit)) if pit.any() else n
+    nxt = W[i0].copy() if i0 < n else (S0.copy() if S0 is not None else None)
+    if nxt is None:
+        return W
     for j in range(i0 - 1, -1, -1):
         r = Rm[j]
-        rj = np.where(np.isfinite(r), r, etf_ret[j] if np.isfinite(etf_ret[j]) else 0.0)
-        W[j] = W[j + 1] * (1.0 + (etf_ret[j] if np.isfinite(etf_ret[j]) else 0.0)) / (1.0 + rj)
+        Rj = etf_ret[j] if np.isfinite(etf_ret[j]) else 0.0
+        rj = np.where(np.isfinite(r), r, Rj)
+        W[j] = nxt * (1.0 + Rj) / (1.0 + rj)
+        nxt = W[j]
     return W
 
 
@@ -80,8 +90,8 @@ def build_etf(etf: str, dates: pd.DatetimeIndex, etf_ret: np.ndarray, snaps: pd.
     asof, S = snapshot_matrix(snaps, tickers)
     W, pit = pit_weights(asof, S, dates)
     if backfill:
-        W = backfill_weights(W, pit, Rm, etf_ret)
-    have = pit | (backfill & pit.any())
+        W = backfill_weights(W, pit, Rm, etf_ret, S0=S[0])
+    have = pit | backfill
     W[~have] = 0.0
     raw = F.constituent_features(W, Rm, etf_ret)
     der = F.derived_features(raw, etf_ret)
