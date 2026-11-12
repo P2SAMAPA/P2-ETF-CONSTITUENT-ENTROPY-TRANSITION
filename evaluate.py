@@ -73,15 +73,25 @@ def auc(y: np.ndarray, p: np.ndarray) -> float:
 
 
 def day_sets(valid_days: np.ndarray, pit_day: np.ndarray) -> Dict[str, np.ndarray]:
-    """Evaluation days: all, selection (first 70% by count), holdout (rest), PIT-only."""
+    """
+    Evaluation days: all, selection, holdout, PIT-only.
+    The primary model is SELECTED on the backfilled (non-PIT) days and JUDGED on the PIT days, so the two never overlap. A
+    first version selected on the first 70% of all days; in a mature archive that segment contains PIT days, so the model
+    chosen for looking good on some days was then graded partly on those same days, which inflated false positives.
+    Until there are enough backfilled days (60) it falls back to a 70/30 split by time.
+    """
     idx = np.where(valid_days)[0]
-    cut = int(len(idx) * config.SELECTION_FRACTION)
-    sets = {"all": np.zeros_like(valid_days), "selection": np.zeros_like(valid_days), "holdout": np.zeros_like(valid_days),
-            "pit": np.zeros_like(valid_days)}
+    sets = {k: np.zeros_like(valid_days) for k in ("all", "selection", "holdout", "pit")}
     sets["all"][idx] = True
-    sets["selection"][idx[:cut]] = True
-    sets["holdout"][idx[cut:]] = True
     sets["pit"][idx] = pit_day[idx]
+    non_pit = idx[~pit_day[idx]]
+    if len(non_pit) >= 60:
+        sets["selection"][non_pit] = True
+        sets["holdout"][idx[pit_day[idx]]] = True
+    else:
+        cut = int(len(idx) * config.SELECTION_FRACTION)
+        sets["selection"][idx[:cut]] = True
+        sets["holdout"][idx[cut:]] = True
     return sets
 
 
@@ -265,4 +275,4 @@ def verdict_for(model: str, ev: Dict, series: Dict, sets: Dict) -> Dict:
     out.update({"verdict": v, "reason": why})
     return out
 
-CODE_VERSION = "2026-11-12.2"
+CODE_VERSION = "2026-11-12.4"

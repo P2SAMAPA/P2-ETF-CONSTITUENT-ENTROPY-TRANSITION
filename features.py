@@ -50,15 +50,22 @@ ALL_FEATURES = FULL
 
 
 def _entropy(part: np.ndarray):
-    """part >= 0, shape (n,K). Returns H, normalized H, effective count exp(H) (NaN where the row sums to 0)."""
+    """
+    part >= 0, shape (n,K). Returns H, normalized H, effective count exp(H).
+    When NOBODY contributes on that side (every listed holding moved the other way) the entropy is 0 and the effective
+    count is 0 — a defined, informative state. A first version returned NaN there, which silently deleted the ETF-day:
+    with a top-10 view that happened on ~21% of ETF-days (34-38% for utilities, semis and energy), exactly the broad,
+    one-directional days this hypothesis is about.
+    """
     s = part.sum(axis=1)
     p = np.divide(part, s[:, None], out=np.zeros_like(part), where=s[:, None] > 0)
     with np.errstate(divide="ignore", invalid="ignore"):
         lp = np.where(p > 0, np.log(p), 0.0)
-    H = np.where(s > 0, -(p * lp).sum(axis=1), np.nan)
+    H = np.where(s > 0, -(p * lp).sum(axis=1), 0.0)
     npos = (part > 0).sum(axis=1)
-    Hn = np.where(npos > 1, H / np.log(np.maximum(npos, 2)), np.where(s > 0, 0.0, np.nan))
-    return H, Hn, np.exp(H)
+    Hn = np.where(npos > 1, H / np.log(np.maximum(npos, 2)), 0.0)
+    eff = np.where(s > 0, np.exp(H), 0.0)
+    return H, Hn, eff
 
 
 def _rolling_corr_stats(Rc: np.ndarray, window: int):
@@ -204,4 +211,4 @@ def transition_flags(f: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
             (f["z_top3turn"] >= config.ROTATION_Z_TURNOVER)
     return {"broadening_strength": broad, "hidden_deterioration": hidden, "capitulation": capit, "leadership_rotation": rot}
 
-CODE_VERSION = "2026-11-12.2"
+CODE_VERSION = "2026-11-12.4"

@@ -80,27 +80,39 @@ intersecting gave 0.74 where exact Spearman on the common set is 0.80.
 baseline with paired t ≥ 1.65, **and the daily top-3 pays after costs**) → `Suggestive` (IC t ≥ 1 and
 beats the baseline t ≥ 1) → `Not supported`. Costs: fraction of picks replaced × 15 bps round trip.
 Rebalancing a top-3 every day is expensive, which is why a strong IC can still be "Suggestive".
+**The primary model is selected on the backfilled days and judged on the PIT days, so the two never overlap.**
+(A first version selected on the first 70% of all days; once the archive matures that segment contains PIT days, and
+a model chosen for looking good on some days was then graded partly on those same days.)
 
-## Validation on synthetic worlds (re-runnable: `python validation.py`)
+## Validation on synthetic worlds (re-runnable: `python validation.py 10 <world>`, then `merge`)
 
-Twelve ETFs × 40 constituents, 900 days, snapshots of the top 10 only, four seeds per world, run
-through the same panel, models, ablation and verdict code:
+Twelve ETFs × 40 constituents, 900 days, snapshots of the top 10 only, **ten seeds per world**, run through the
+same panel, models, ablation and verdict code:
 
 | world | verdicts | FULL − COMBO IC on PIT days (ridge / LightGBM) | top-3 net |
 |---|---|---|---|
-| no relation between structure and next day | Not supported ×4 | −0.006 (t −0.5) / −0.004 (t −0.3) | −9.6 bps/day |
-| effect that return+breadth+concentration can already express | Not supported ×4 | −0.007 (t −0.5) / +0.010 (t +0.6) | −5.6 |
-| effect carried only by entropy acceleration | Suggestive ×3, Supported ×1 | **+0.037 (t +2.6) / +0.046 (t +2.9)** | −2.8 |
+| no relation between structure and next day | Not supported ×9, Suggestive ×1 | −0.003 / +0.007 | −9 to −10 bps/day |
+| effect that return+breadth+concentration can already express | Not supported ×8, Suggestive ×2 | +0.001 / +0.006 | −7 to −8 |
+| effect carried only by entropy acceleration | Not supported ×2, Suggestive ×7, Supported ×1 | **+0.030 (t +2.7) / +0.034 (t +2.7)** | −3.6 |
 
-So the engine stays quiet when there is nothing there, does **not** credit entropy features for
-what breadth and concentration already carry, and does credit them when only they carry it. The
-transition tables recover planted effects (hidden deterioration −15.8 bps, broadening +9.0,
-rotation ≈ 0 where nothing was planted). Reversal AUCs sit at chance where no reversal structure
-exists. Mature-archive end-to-end test: IC +0.10 (t 5.6), beats COMBO by +0.069 (t 4.5) — still only
-"Suggestive" because the top-3 lost 2 bps/day after costs. Two findings from testing: a degenerate
-feature (divergence when the constituents are 100% of the fund) must z-score to 0, not NaN, or it
-deletes every row; and the day-one case (a single snapshot taken today) needed the backfill to seed
-from the snapshot itself.
+"Supported" never appeared without a real effect (0 of 20 runs). **"Suggestive" is a weak label: it fired in
+10–20% of runs with nothing to find**, so treat it as "keep collecting", not as evidence. The engine does not credit
+entropy features for what breadth and concentration already carry (ΔIC ≈ 0 in the middle world) and does credit
+them when only they carry it (detected in 8 of 10 runs, mostly as "Suggestive" because daily turnover costs eat the
+gross edge). The transition tables recover planted effects (hidden deterioration −15 bps, broadening +8,
+capitulation +9 where planted; ≈ 0 elsewhere).
+
+Bugs found by testing and by the first real run (all fixed):
+* a degenerate feature (divergence when the constituents are 100% of the fund) must z-score to 0, not NaN;
+* day one (a single snapshot taken today) needed the backfill to seed from the snapshot itself;
+* **entropy was undefined when every listed holding moved the same way, which silently deleted the ETF-day.** With a
+  top-10 view that is ~21% of ETF-days on average (34–38% for utilities, semis, energy) — the broad,
+  one-directional days the hypothesis is about. "Nobody contributed on that side" is now a defined state (entropy 0,
+  effective contributors 0);
+* exchange-suffixed symbols (`ABX.TO`, `HSBA.L`) were stored as `ABX-TO` and could not be downloaded;
+* the archive kept all-NaN columns and a half-empty trailing date;
+* a first validation looked clean (0 of 4 false positives) partly by luck and partly because model selection
+  overlapped the verdict days; ten seeds and a non-overlapping selection give the table above.
 
 ## What is NOT verified
 

@@ -218,6 +218,11 @@ class Archive:
             add = add.loc[:, ~add.columns.duplicated()]
             self.prices = add.combine_first(self.prices) if len(self.prices) else add
             self.prices = self.prices.sort_index()
+        if len(self.prices):
+            self.prices = self.prices.dropna(axis=1, how="all")            # a symbol that returned no data at all is not "downloaded"
+            ok = self.prices.notna().mean(axis=1) >= 0.5                    # a trailing date that is mostly empty (pre-market / partial row)
+            if ok.any():
+                self.prices = self.prices.loc[: ok[ok].index[-1]]
         got = set(self.prices.columns) if len(self.prices) else set()
         report["failed"] = [t for t in new if t not in got]
         return report
@@ -240,4 +245,4 @@ class Archive:
                 return "push failed: " + type(e).__name__ + ": " + str(e)[:150]
         return "saved locally (%d files)" % len(paths)
 
-CODE_VERSION = "2026-11-12.2"
+CODE_VERSION = "2026-11-12.4"

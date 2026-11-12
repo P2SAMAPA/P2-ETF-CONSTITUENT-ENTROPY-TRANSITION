@@ -132,4 +132,4 @@ def walk_forward(X: np.ndarray, y: np.ndarray, rows: np.ndarray, feat_idx: List[
             score[d, m] = model.predict(X[d][m][:, feat_idx])
     return {"score": score, "fits": fits, "fails": fails}
 
-CODE_VERSION = "2026-11-12.2"
+CODE_VERSION = "2026-11-12.4"

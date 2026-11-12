@@ -43,29 +43,41 @@ def one_run(theta: float, effect: str, seed: int, n: int = 900, fast: bool = Tru
             "transitions": {k: {"mean_bps": x.get("mean_next_rel_bps"), "t": x.get("t_by_day")} for k, x in tt.items()}}
 
 
-def run_validation(seeds: int = 4, n: int = 900) -> Dict:
-    out = {"n_days": n, "n_etfs": 12, "constituents": 40, "snapshots": "top-10 only (partial coverage)", "worlds": []}
-    for label, theta, effect in WORLDS:
-        runs = [one_run(theta, effect, 100 + s, n) for s in range(seeds)]
-        verdicts = [r["verdict"] for r in runs]
-        w = {"label": label, "theta": theta, "effect": effect, "n_runs": seeds,
-             "verdicts": {v: verdicts.count(v) for v in sorted(set(verdicts))}}
-        for f in ("ridge", "lightgbm"):
-            for k in ("ic_full", "ic_combo", "d_ic_all", "d_ic_t_all", "d_ic_pit", "d_ic_t_pit", "net_bps_all"):
-                vals = [r["families"][f][k] for r in runs if r["families"][f][k] is not None]
-                w["%s_%s" % (f, k)] = float(np.mean(vals)) if vals else None
-        for tname in ["broadening_strength", "hidden_deterioration", "capitulation", "leadership_rotation"]:
-            vals = [r["transitions"][tname]["mean_bps"] for r in runs if r["transitions"].get(tname, {}).get("mean_bps") is not None]
-            w["transition_%s_mean_bps" % tname] = float(np.mean(vals)) if vals else None
-        out["worlds"].append(w)
-        print(label, w["verdicts"], flush=True)
+def run_world(idx: int, seeds: int = 10, n: int = 900) -> Dict:
+    label, theta, effect = WORLDS[idx]
+    runs = [one_run(theta, effect, 100 + s, n) for s in range(seeds)]
+    verdicts = [r["verdict"] for r in runs]
+    w = {"label": label, "theta": theta, "effect": effect, "n_runs": seeds, "verdicts": {v: verdicts.count(v) for v in sorted(set(verdicts))}}
+    for f in ("ridge", "lightgbm"):
+        for k in ("ic_full", "ic_combo", "d_ic_all", "d_ic_t_all", "d_ic_pit", "d_ic_t_pit", "net_bps_all"):
+            vals = [r["families"][f][k] for r in runs if r["families"][f][k] is not None]
+            w["%s_%s" % (f, k)] = float(np.mean(vals)) if vals else None
+    for tname in ["broadening_strength", "hidden_deterioration", "capitulation", "leadership_rotation"]:
+        vals = [r["transitions"][tname]["mean_bps"] for r in runs if r["transitions"].get(tname, {}).get("mean_bps") is not None]
+        w["transition_%s_mean_bps" % tname] = float(np.mean(vals)) if vals else None
+    return w
+
+
+def merge(seeds: int, n: int = 900) -> Dict:
+    out = {"n_days": n, "n_etfs": 12, "constituents": 40, "snapshots": "top-10 only (partial coverage)", "seeds_per_world": seeds, "worlds": []}
+    for i in range(len(WORLDS)):
+        out["worlds"].append(json.load(open("validation_world_%d.json" % i)))
+    json.dump(out, open("validation_results.json", "w"), indent=1)
     return out
 
 
 if __name__ == "__main__":
-    seeds = int(sys.argv[1]) if len(sys.argv) > 1 else 4
-    t0 = time.time()
-    res = run_validation(seeds=seeds)
-    res["seconds"] = round(time.time() - t0)
-    json.dump(res, open("validation_results.json", "w"), indent=1)
-    print("saved validation_results.json in %ds" % res["seconds"])
+    seeds = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    if len(sys.argv) > 2 and sys.argv[2] == "merge":
+        merge(seeds)
+        print("merged -> validation_results.json")
+    elif len(sys.argv) > 2:
+        i = int(sys.argv[2]); t0 = time.time()
+        w = run_world(i, seeds)
+        w["seconds"] = round(time.time() - t0)
+        json.dump(w, open("validation_world_%d.json" % i, "w"), indent=1)
+        print(w["label"], w["verdicts"], "in %ds" % w["seconds"], flush=True)
+    else:
+        for i in range(len(WORLDS)):
+            w = run_world(i, seeds); json.dump(w, open("validation_world_%d.json" % i, "w"), indent=1); print(w["label"], w["verdicts"], flush=True)
+        merge(seeds)

@@ -145,7 +145,7 @@ def run_pipeline(etf_prices: pd.DataFrame, cons_prices: pd.DataFrame, holdings: 
     return _clean(results)
 
 
-CODE_VERSION = "2026-11-12.2"
+CODE_VERSION = "2026-11-12.4"
 
 
 def check_versions():
