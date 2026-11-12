@@ -106,14 +106,19 @@ def run_experiments(U: Dict, fast: bool = False, specs: Optional[List] = None) -
     if specs is None:
         specs = [("ridge", "MOM"), ("ridge", "BREADTH"), ("ridge", "CONC"), ("ridge", "COMBO"), ("ridge", "FULL"),
                  ("lightgbm", "COMBO"), ("lightgbm", "FULL")] + ([] if fast else [("gam", "FULL")])
-    res = {"rel": {}, "abs": {}, "rev": {}, "fits": {}}
+    res = {"rel": {}, "abs": {}, "cls": {}, "rev": {}, "fits": {}}
     for kind, fs in specs:
-        wf = M.walk_forward(X, U["y_rel"], rows, idx[fs], names, kind, refit_days=rd)
+        wf = M.walk_forward(X, U["y_rel"], rows, idx[fs], names, kind, refit_days=rd * (config.GAM_REFIT_MULT if kind == "gam" else 1))
         res["rel"]["%s_%s" % (kind, fs)] = wf["score"]
         res["fits"]["rel_%s_%s" % (kind, fs)] = (wf["fits"], wf["fails"])
     for kind, fs in [s for s in specs if s[1] == "FULL"]:
-        wf = M.walk_forward(X, U["y_abs"], rows, idx[fs], names, kind, refit_days=rd)
+        wf = M.walk_forward(X, U["y_abs"], rows, idx[fs], names, kind, refit_days=rd * (config.GAM_REFIT_MULT if kind == "gam" else 1))
         res["abs"]["%s_%s" % (kind, fs)] = wf["score"]
+    # "will ETF i outperform the eligible universe tomorrow?" — a probability, from a classifier
+    y_cls = np.where(np.isfinite(U["y_rel"]), (U["y_rel"] > 0).astype(float), np.nan)
+    for kind in ("logit", "lightgbm_clf"):
+        wf = M.walk_forward(X, y_cls, rows, idx["FULL"], names, kind, refit_days=rd)
+        res["cls"]["%s_FULL" % kind] = wf["score"]
     rev_specs = [("logit", k) for k in ["MOM", "BREADTH", "CONC", "COMBO", "FULL"]] + [("lightgbm_clf", "COMBO"), ("lightgbm_clf", "FULL")]
     for kind, fs in rev_specs:
         wf = M.walk_forward(X, U["y_rev"], U["big"], idx[fs], names, kind, refit_days=rd, min_rows=800, min_etfs=1)
@@ -123,18 +128,24 @@ def run_experiments(U: Dict, fast: bool = False, specs: Optional[List] = None) -
 
 def evaluate_all(U: Dict, res: Dict) -> Dict:
     ret_next = np.vstack([U["ret"][1:], np.full((1, U["ret"].shape[1]), np.nan)])
-    out = {"rel": {}, "abs": {}, "series": {}, "rev": {}}
+    out = {"rel": {}, "abs": {}, "cls": {}, "series": {}, "rev": {}}
     first = next(iter(res["rel"].values()))
     valid_days = (np.isfinite(first) & np.isfinite(U["y_rel"])).sum(axis=1) >= config.MIN_ETFS_PER_DAY
     sets = day_sets(valid_days, U["pit_day"])
     out["day_counts"] = {k: int(v.sum()) for k, v in sets.items()}
     ser = {}
-    for grp in ("rel", "abs"):
+    for grp in ("rel", "abs", "cls"):
         for name, sc in res[grp].items():
             ic = daily_ic(sc, U["y_rel"])
             gr, nt = topn_series(sc, ret_next, U["univ"])
             ser[(grp, name)] = (ic, gr, nt)
             out[grp][name] = {k: summarize(ic, gr, nt, m) for k, m in sets.items()}
+            if grp == "cls":
+                yc = (U["y_rel"] > 0).astype(float)
+                okr = np.isfinite(sc) & np.isfinite(U["y_rel"])
+                out[grp][name]["auc_all"] = auc(yc[okr], sc[okr])
+                okp = okr & sets["pit"][:, None]
+                out[grp][name]["auc_pit"] = auc(yc[okp], sc[okp])
     # the ablation: structure vs the COMBO baseline of the SAME family
     abl = {}
     for fam in ("ridge", "lightgbm"):
@@ -253,3 +264,5 @@ def verdict_for(model: str, ev: Dict, series: Dict, sets: Dict) -> Dict:
         v, why = "Not supported", "On point-in-time days the structure does not rank ETFs better than the baseline (IC t = %.2f, ΔIC t = %.2f)." % (s["ic_t"], d_ic["t"])
     out.update({"verdict": v, "reason": why})
     return out
+
+CODE_VERSION = "2026-11-12.2"

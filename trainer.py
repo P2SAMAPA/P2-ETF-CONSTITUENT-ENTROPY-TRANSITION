@@ -145,8 +145,26 @@ def run_pipeline(etf_prices: pd.DataFrame, cons_prices: pd.DataFrame, holdings: 
     return _clean(results)
 
 
+CODE_VERSION = "2026-11-12.2"
+
+
+def check_versions():
+    """Every file must come from the same release. A mixed set (an old evaluate.py with a new trainer.py) used to die with a KeyError."""
+    stale = [m.__name__ + ".py" for m in (config, F, P, E, D) if getattr(m, "CODE_VERSION", None) != CODE_VERSION]
+    try:
+        import models as _m
+        if getattr(_m, "CODE_VERSION", None) != CODE_VERSION:
+            stale.append("models.py")
+    except Exception:
+        stale.append("models.py")
+    if stale:
+        raise RuntimeError("Files from different releases: " + ", ".join(stale) + " are not version " + CODE_VERSION
+                           + ". Replace ALL files in the repo with the ones from the latest zip.")
+
+
 def run_trainer(fetch: Callable = D.fetch_top_holdings, download: Callable = D.download_prices, archive: Optional[D.Archive] = None,
                 prices_loader: Optional[Callable] = None, push: bool = True) -> Dict:
+    check_versions()
     logger.info("🔄 Loading ETF prices...")
     try:
         if prices_loader is None:
@@ -167,6 +185,8 @@ def run_trainer(fetch: Callable = D.fetch_top_holdings, download: Callable = D.d
     logger.info(f"Archive status: {arch.status} (writable={arch.writable})")
     snap = arch.snapshot_today(list(etf_prices.columns), asof, fetch=fetch)
     logger.info(f"Holdings snapshot as of {asof}: {snap['added']} added, {snap['already']} already archived, {len(snap['failed'])} failed")
+    if snap["failed"]:
+        logger.warning("Holdings unavailable for: " + "; ".join(f"{k} ({v})" for k, v in snap["failed"].items()))
     hold = arch.effective_holdings()
     tickers = sorted(set(hold["ticker"])) if len(hold) else []
     prep = arch.update_prices(tickers, etf_prices.index[0].strftime("%Y-%m-%d"), download=download) if tickers else {}

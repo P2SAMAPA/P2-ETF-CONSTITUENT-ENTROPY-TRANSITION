@@ -31,6 +31,26 @@ import config
 # ---------------------------------------------------------------------------
 # Providers (network)
 # ---------------------------------------------------------------------------
+# Yahoo exchange suffixes keep their dot (ABX.TO, HSBA.L, ASML.AS, 8306.T); a single-letter share class takes a dash (BRK.B -> BRK-B).
+# A first version turned EVERY dot into a dash, so all foreign-listed holdings were stored under symbols that do not exist
+# (ABX-TO, HSBA-L ...) and failed to download. T, V, L, F are treated as exchanges (Tokyo, TSX Venture, London, Frankfurt).
+EXCHANGE_SUFFIXES = {"TO", "V", "L", "AS", "PA", "DE", "MI", "MC", "SW", "ST", "HE", "CO", "OL", "AX", "NZ", "T", "KS", "KQ", "HK", "SS",
+                     "SZ", "JO", "SA", "MX", "TW", "TWO", "SI", "BK", "JK", "NS", "BO", "IR", "LS", "BR", "VI", "WA", "IS", "TA", "F"}
+
+
+def normalize_symbol(sym: str) -> str:
+    s = str(sym).strip().upper()
+    for sep in (".", "-"):
+        if sep in s:
+            base, suf = s.rsplit(sep, 1)
+            if suf in EXCHANGE_SUFFIXES:
+                return base + "." + suf
+            if sep == "." and len(suf) == 1:
+                return base + "-" + suf
+            return s
+    return s
+
+
 def fetch_top_holdings(etf: str) -> List[Tuple[str, float]]:
     """Top holdings of an ETF from Yahoo via yfinance (funds_data.top_holdings: indexed by Symbol, with a 'Holding Percent' column)."""
     import yfinance as yf
@@ -46,7 +66,7 @@ def fetch_top_holdings(etf: str) -> List[Tuple[str, float]]:
     out = []
     for sym, wt in zip(th.index, w.values):
         if isinstance(sym, str) and np.isfinite(wt) and wt > 0:
-            out.append((sym.strip().upper().replace(".", "-"), float(wt)))
+            out.append((normalize_symbol(sym), float(wt)))
     return out
 
 
@@ -136,6 +156,8 @@ class Archive:
                 try:
                     if key == "holdings":
                         self.holdings = pd.read_parquet(path)
+                        if len(self.holdings):       # repair symbols archived by the first version (ABX-TO -> ABX.TO)
+                            self.holdings["ticker"] = self.holdings["ticker"].map(normalize_symbol)
                     elif key == "prices":
                         self.prices = pd.read_parquet(path)
                     else:
@@ -217,3 +239,5 @@ class Archive:
             except Exception as e:
                 return "push failed: " + type(e).__name__ + ": " + str(e)[:150]
         return "saved locally (%d files)" % len(paths)
+
+CODE_VERSION = "2026-11-12.2"

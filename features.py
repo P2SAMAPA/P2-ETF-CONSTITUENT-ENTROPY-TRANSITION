@@ -155,7 +155,10 @@ def _z(x: np.ndarray) -> np.ndarray:
     s = pd.Series(x)
     mu = s.rolling(config.Z_WINDOW, min_periods=config.Z_MIN).mean().shift(1)     # history only: today is not in its own baseline
     sd = s.rolling(config.Z_WINDOW, min_periods=config.Z_MIN).std().shift(1)
-    return ((s - mu) / sd.where(sd > 1e-12)).values
+    # sd is floored (not masked): a feature that is numerically constant — e.g. divergence when the listed
+    # constituents are 100% of the fund — has z ~ 0 ("no divergence"), and must not turn into NaN and
+    # delete every row that needs it
+    return ((s - mu) / sd.clip(lower=1e-8)).values
 
 
 def derived_features(raw: Dict[str, np.ndarray], etf_ret: np.ndarray) -> Dict[str, np.ndarray]:
@@ -200,3 +203,5 @@ def transition_flags(f: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         rot = ok(f["z_rankcorr"], f["z_top3turn"]) & (f["z_rankcorr"] <= config.ROTATION_Z_RANKCORR) & \
             (f["z_top3turn"] >= config.ROTATION_Z_TURNOVER)
     return {"broadening_strength": broad, "hidden_deterioration": hidden, "capitulation": capit, "leadership_rotation": rot}
+
+CODE_VERSION = "2026-11-12.2"

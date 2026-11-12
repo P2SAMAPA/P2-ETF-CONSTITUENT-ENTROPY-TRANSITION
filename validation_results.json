@@ -1,0 +1,91 @@
+{
+ "n_days": 900,
+ "n_etfs": 12,
+ "constituents": 40,
+ "snapshots": "top-10 only (partial coverage)",
+ "worlds": [
+  {
+   "label": "null",
+   "theta": 0.0,
+   "effect": "flags",
+   "n_runs": 4,
+   "verdicts": {
+    "Not supported": 4
+   },
+   "ridge_ic_full": 0.0017701507969301337,
+   "ridge_ic_combo": 0.007398928879443951,
+   "ridge_d_ic_all": -0.005628778082513816,
+   "ridge_d_ic_t_all": -0.4222958378560747,
+   "ridge_d_ic_pit": -0.005860379016218203,
+   "ridge_d_ic_t_pit": -0.4573488312225648,
+   "ridge_net_bps_all": -9.616611683166248,
+   "lightgbm_ic_full": -0.0013895942423517464,
+   "lightgbm_ic_combo": 0.005225486208845953,
+   "lightgbm_d_ic_all": -0.006615080451197695,
+   "lightgbm_d_ic_t_all": -0.496806785334799,
+   "lightgbm_d_ic_pit": -0.003992297487508404,
+   "lightgbm_d_ic_t_pit": -0.3360850247686926,
+   "lightgbm_net_bps_all": -9.245996718583642,
+   "transition_broadening_strength_mean_bps": 0.7341643758084042,
+   "transition_hidden_deterioration_mean_bps": -2.4845499549227124,
+   "transition_capitulation_mean_bps": 0.6458275954211616,
+   "transition_leadership_rotation_mean_bps": -0.33197252542812383
+  },
+  {
+   "label": "baseline-expressible effect",
+   "theta": 0.004,
+   "effect": "flags",
+   "n_runs": 4,
+   "verdicts": {
+    "Not supported": 4
+   },
+   "ridge_ic_full": 0.03698504046166504,
+   "ridge_ic_combo": 0.04323722964380358,
+   "ridge_d_ic_all": -0.006252189182138532,
+   "ridge_d_ic_t_all": -0.49888146919622856,
+   "ridge_d_ic_pit": -0.006897113904555689,
+   "ridge_d_ic_t_pit": -0.5197665244124963,
+   "ridge_net_bps_all": -5.6100236110964845,
+   "lightgbm_ic_full": 0.03531496274071405,
+   "lightgbm_ic_combo": 0.026562926675816494,
+   "lightgbm_d_ic_all": 0.008752036064897552,
+   "lightgbm_d_ic_t_all": 0.4936270895320906,
+   "lightgbm_d_ic_pit": 0.009528391139991795,
+   "lightgbm_d_ic_t_pit": 0.5511045614138177,
+   "lightgbm_net_bps_all": -6.07718131385856,
+   "transition_broadening_strength_mean_bps": 8.986996780271848,
+   "transition_hidden_deterioration_mean_bps": -15.81431816637609,
+   "transition_capitulation_mean_bps": 9.016083985112614,
+   "transition_leadership_rotation_mean_bps": -0.7746010301822266
+  },
+  {
+   "label": "entropy-only effect",
+   "theta": 0.004,
+   "effect": "entropy",
+   "n_runs": 4,
+   "verdicts": {
+    "Suggestive": 3,
+    "Supported": 1
+   },
+   "ridge_ic_full": 0.11280194139224364,
+   "ridge_ic_combo": 0.07866952609373738,
+   "ridge_d_ic_all": 0.03413241529850629,
+   "ridge_d_ic_t_all": 2.454009232632491,
+   "ridge_d_ic_pit": 0.0368490096340396,
+   "ridge_d_ic_t_pit": 2.5772067900519273,
+   "ridge_net_bps_all": -2.7737775985819324,
+   "lightgbm_ic_full": 0.1106546987172256,
+   "lightgbm_ic_combo": 0.06750215399862436,
+   "lightgbm_d_ic_all": 0.043152544718601235,
+   "lightgbm_d_ic_t_all": 2.8170003993950634,
+   "lightgbm_d_ic_pit": 0.04581817808489627,
+   "lightgbm_d_ic_t_pit": 2.8986562564979157,
+   "lightgbm_net_bps_all": -2.423006953696991,
+   "transition_broadening_strength_mean_bps": -0.319504126597106,
+   "transition_hidden_deterioration_mean_bps": -2.3189558941634556,
+   "transition_capitulation_mean_bps": 7.805131596568831,
+   "transition_leadership_rotation_mean_bps": -1.0455482232186297
+  }
+ ],
+ "seconds": 96
+}

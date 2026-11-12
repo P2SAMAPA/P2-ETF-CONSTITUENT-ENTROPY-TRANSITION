@@ -135,5 +135,7 @@ streamlit_app.py   Today / Evidence / Transitions / Data / Validation
 `python trainer.py` with the `HF_TOKEN` secret; it needs permission to create/write
 `P2SAMAPA/p2-etf-constituent-entropy-transition-data` (the archive) and
 `P2SAMAPA/p2-etf-constituent-entropy-transition-results` (create them first if the token cannot).
+**Always replace all files together.** Every module carries a `CODE_VERSION`, and `trainer.py` refuses to run if any file is from a different release (it says which). Tickers are normalized the way Yahoo expects (`BRK.B` → `BRK-B`, but exchange suffixes keep their dot: `ABX.TO`, `HSBA.L`, `8306.T`); symbols archived by an earlier version are repaired on load.
+
 History is capped at 2,200 days, GAM trains on the most recent 40,000 rows and refits half as
 often, to keep a run well inside the 60-minute limit. This is not financial advice.

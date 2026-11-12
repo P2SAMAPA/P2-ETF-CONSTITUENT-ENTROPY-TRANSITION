@@ -174,3 +174,5 @@ def build_universe(etf_prices: pd.DataFrame, cons_prices: pd.DataFrame, holdings
     return {"dates": dates, "etfs": names, "X": Xcs, "X_unstd": X, "ret": ret, "pit": pit, "elig": elig, "univ": univ, "flags": flags,
             "y_abs": y_abs, "y_rel": y_rel, "rel_today": rel_today, "y_rev": y_rev, "big": big, "pit_day": pit_day, "meta": meta,
             "skipped": skipped, "built": built}
+
+CODE_VERSION = "2026-11-12.2"
